@@ -430,7 +430,7 @@
       })
       .catch(err => {
         $('#emptyTitle').textContent = 'Couldn\u2019t load data files';
-        $('#emptyBody').innerHTML = 'Make sure <code>Main-1.json</code> through <code>Main-5.json</code>, <code>Logo.svg</code>, and <code>Logo.png</code> all sit next to <code>index.html</code>, and that the folder is served over HTTP — opening the file directly (<code>file://</code>) blocks the fetch. Try: <code>python -m http.server</code>, then open <code>localhost:8000</code>.<br><br><span style="color:var(--needle-dim)">' + err.message + '</span>';
+        $('#emptyBody').innerHTML = 'Something went wrong while loading Needle.<br><br>Please <a href="status.html" style="color:var(--needle-accent)">check the system status</a> or refresh the page. If the issue continues, please contact <a href="mailto:netstrike701@proton.me" style="color:var(--needle-accent)">netstrike701@proton.me</a>.<br><br><span style="color:var(--needle-dim)">Error: ' + err.message + '</span>';
       });
   }
 
