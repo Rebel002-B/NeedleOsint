@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Needle — Record Search</title>
+<link rel="icon" href="Logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #eae7df;
+    --ink-dim: #9a968b;
+    --ink-faint: #5c584e;
+    --bg: #0c0b09;
+    --bg-raised: #141310;
+    --bg-panel: #17150f;
+    --line: #2a271e;
+    --needle: #ff4b2e;
+    --needle-dim: #7a2517;
+    --thread: #d9c98a;
+    --ok: #7fae6e;
+    --radius: 2px;
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Fraunces', serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html,body{
+    margin:0; padding:0; height:100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--mono);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body{
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,75,46,0.07), transparent),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+  }
+
+  ::selection{ background: var(--needle); color: #100; }
+
+  /* ---------- Layout shell ---------- */
+  .shell{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 28px 80px;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap: 24px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 22px;
+    margin-bottom: 30px;
+    opacity: 0;
+    animation: rise .6s ease forwards;
+  }
+
+  .brand{ display:flex; align-items:center; gap: 14px; }
+  .brand img.logo{ height: 40px; width: auto; display:block; }
+  .logo-fallback{ display:none; height:40px; width:40px; }
+  .brand h1{
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 34px;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--ink);
+  }
+  .brand h1 span{ color: var(--needle); }
+  .brand .tagline{
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 2px;
+  }
+
+  .statbar{ display:flex; gap: 22px; }
+  .stat{ text-align:right; }
+  .stat .n{
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 20px;
+    color: var(--thread);
+    line-height: 1;
+  }
+  .stat .l{
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 4px;
+  }
+
+  /* ---------- Search ---------- */
+  .searchwrap{
+    opacity: 0;
+    animation: rise .6s ease forwards .1s;
+  }
+  .searchbox{
+    position: relative;
+    display:flex;
+    align-items:center;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 4px 4px 4px 18px;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .searchbox:focus-within{
+    border-color: var(--needle-dim);
+    box-shadow: 0 0 0 3px rgba(255,75,46,0.08);
+  }
+  .searchbox svg{ flex: none; color: var(--ink-faint); }
+  .searchbox input{
+    flex:1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 16px;
+    padding: 16px 12px;
+  }
+  .searchbox input::placeholder{ color: var(--ink-faint); }
+  .searchbox .clearbtn{
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    display:none;
+  }
+  .searchbox .clearbtn:hover{ color: var(--needle); }
+
+  .searchmeta{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top: 10px; font-size: 11px; color: var(--ink-faint);
+    letter-spacing: .04em;
+  }
+  .searchmeta .field-note{ color: var(--ink-faint); }
+
+  /* ---------- Results ---------- */
+  .results{ margin-top: 26px; }
+  .empty-state{
+    padding: 70px 20px;
+    text-align: center;
+    color: var(--ink-faint);
+  }
+  .empty-state .glyph{ font-size: 40px; color: var(--needle-dim); margin-bottom: 14px; }
+  .empty-state h2{
+    font-family: var(--display); font-weight: 600; color: var(--ink-dim);
+    font-size: 20px; margin: 0 0 8px;
+  }
+  .empty-state p{ font-size: 13px; max-width: 420px; margin: 0 auto; line-height:1.6; }
+
+  table.results-table{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .results-table thead th{
+    text-align:left;
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .results-table tbody tr{
+    cursor: pointer;
+    transition: background .12s ease;
+    border-bottom: 1px solid var(--line);
+  }
+  .results-table tbody tr:hover{ background: var(--bg-raised); }
+  .results-table td{
+    padding: 11px 12px;
+    color: var(--ink-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+  }
+  .results-table td.name{ color: var(--ink); font-weight: 600; }
+  .results-table td.loc{ color: var(--ink-faint); }
+  .results-table tr .go{ color: var(--needle); opacity:0; transition: opacity .12s; }
+  .results-table tr:hover .go{ opacity:1; }
+
+  .truncnote{
+    padding: 14px 12px;
+    font-size: 11px;
+    color: var(--ink-faint);
+    border-top: 1px dashed var(--line);
+  }
+
+  /* ---------- Detail panel ---------- */
+  .scrim{
+    position: fixed; inset:0; background: rgba(6,5,4,0.6);
+    opacity:0; pointer-events:none; transition: opacity .25s ease;
+    z-index: 40;
+  }
+  .scrim.open{ opacity:1; pointer-events:auto; }
+
+  .panel{
+    position: fixed; top:0; right:0; height:100%;
+    width: min(460px, 100%);
+    background: var(--bg-panel);
+    border-left: 1px solid var(--line);
+    transform: translateX(100%);
+    transition: transform .28s cubic-bezier(.16,.8,.32,1);
+    z-index: 50;
+    overflow-y: auto;
+    padding: 26px 26px 60px;
+  }
+  .panel.open{ transform: translateX(0); }
+
+  .panel .closebtn{
+    background:none; border:1px solid var(--line); color: var(--ink-faint);
+    width: 30px; height:30px; border-radius: var(--radius); cursor:pointer;
+    font-family: var(--mono); font-size: 14px;
+  }
+  .panel .closebtn:hover{ border-color: var(--needle); color: var(--needle); }
+
+  .trail{
+    display:flex; flex-wrap:wrap; gap:6px; margin: 18px 0 20px;
+  }
+  .trail button{
+    background: var(--bg-raised); border: 1px solid var(--line); color: var(--ink-faint);
+    font-family: var(--mono); font-size: 10px; padding: 5px 9px; border-radius: var(--radius);
+    cursor:pointer; letter-spacing:.03em;
+  }
+  .trail button:last-child{ color: var(--thread); border-color: var(--ink-faint); }
+  .trail .sep{ color: var(--ink-faint); font-size: 10px; align-self:center; }
+
+  .rec-name{
+    font-family: var(--display); font-weight: 700; font-size: 26px;
+    color: var(--ink); margin: 6px 0 2px; letter-spacing:-0.01em;
+  }
+  .rec-sub{ font-size: 12px; color: var(--ink-faint); margin-bottom: 22px; }
+
+  .field-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 14px 18px;
+    margin-bottom: 26px;
+  }
+  .field-grid .full{ grid-column: 1 / -1; }
+  .field{ }
+  .field .k{
+    font-size: 9px; letter-spacing:.1em; text-transform:uppercase;
+    color: var(--ink-faint); margin-bottom: 4px;
+  }
+  .field .v{ font-size: 13.5px; color: var(--ink); word-break: break-word; }
+  .field .v.empty{ color: var(--ink-faint); font-style: italic; }
+
+  .branch-section{ margin-top: 8px; }
+  .branch-section h3{
+    font-size: 11px; letter-spacing:.1em; text-transform:uppercase;
+    color: var(--needle); margin: 0 0 10px; font-weight:600;
+    display:flex; align-items:center; gap:8px;
+  }
+  .branch-section h3::before{ content:'—'; color: var(--needle-dim); }
+  .branch-list{ list-style:none; margin:0 0 24px; padding:0; }
+  .branch-list li{
+    padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--radius);
+    margin-bottom: 6px; cursor:pointer; font-size: 12.5px; color: var(--ink-dim);
+    display:flex; justify-content:space-between; align-items:center;
+    transition: border-color .12s, background .12s;
+  }
+  .branch-list li:hover{ border-color: var(--needle-dim); background: var(--bg-raised); color: var(--ink); }
+  .branch-list li .tag{ font-size: 9px; color: var(--ink-faint); text-transform:uppercase; letter-spacing:.06em; }
+  .branch-empty{ font-size:12px; color: var(--ink-faint); padding: 8px 0 20px; }
+
+  /* ---------- Footer / loading ---------- */
+  .loadbar{
+    position: fixed; bottom: 0; left:0; right:0; height:3px;
+    background: var(--needle); transform-origin: left; z-index: 60;
+  }
+  .footer-note{
+    margin-top: 50px; font-size: 10.5px; color: var(--ink-faint);
+    text-align:center; letter-spacing:.04em; line-height:1.8;
+  }
+
+  @keyframes rise{ from{ opacity:0; transform: translateY(8px);} to{ opacity:1; transform: translateY(0);} }
+
+  @media (max-width: 720px){
+    header{ flex-direction:column; align-items:flex-start; gap:14px; }
+    .statbar{ align-self: stretch; justify-content: space-between; }
+    .field-grid{ grid-template-columns: 1fr; }
+    .results-table thead{ display:none; }
+    .results-table td{ display:block; max-width:none; white-space:normal; }
+    .results-table td.loc{ font-size:11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <header>
+    <div class="brand">
+      <img class="logo" src="Logo.svg" alt="Needle" onerror="this.onerror=null;this.src='Logo.png';this.classList.add('fallback-tried')">
+      <div>
+        <h1>Needle<span>.</span></h1>
+        <div class="tagline">Find it in the haystack</div>
+      </div>
+    </div>
+    <div class="statbar">
+      <div class="stat">
+        <div class="n" id="statCount">—</div>
+        <div class="l">Records Indexed</div>
+      </div>
+      <div class="stat">
+        <div class="n" id="statDate">Sun Aug 23 2026</div>
+        <div class="l">Snapshot Date</div>
+      </div>
+      <div class="stat">
+        <div class="n" id="statStates">—</div>
+        <div class="l">States Covered</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="searchwrap">
+    <div class="searchbox">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" type="text" placeholder="Search name, address, city, county, state, zip, or phone…" autocomplete="off" disabled>
+      <button class="clearbtn" id="clearBtn">clear</button>
+    </div>
+    <div class="searchmeta">
+      <span id="resultCount">&nbsp;</span>
+      <span class="field-note">Search does not match on gender or ethnicity fields</span>
+    </div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="empty-state" id="emptyState">
+      <div class="glyph">◎</div>
+      <h2 id="emptyTitle">Loading records…</h2>
+      <p id="emptyBody">Fetching files.. Please wait 5-30, if it takes too long contact Netstrike701@proton.me</p>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    All local not third party apps involved "Strike the world" ~ Netstrike
+  </div>
+
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="panel" id="panel">
+  <button class="closebtn" id="closeBtn">✕</button>
+  <div class="trail" id="trail"></div>
+  <div id="panelBody"></div>
+</div>
+
+<script>
+  // ---------------------------------------------------------------
+  // Data load
+  // ---------------------------------------------------------------
+  let ROWS = [];
+  let SEARCH_INDEX = [];
+  const SEARCH_FIELDS = ['first name','last name','address','city','county','state','zip','phone','carrier'];
+  const historyStack = [];
+
+  const $ = sel => document.querySelector(sel);
+  const input = $('#searchInput');
+  const resultsEl = $('#results');
+  const emptyState = $('#emptyState');
+  const resultCountEl = $('#resultCount');
+  const clearBtn = $('#clearBtn');
+
+  function digitsOnly(s){ return (s||'').replace(/\D/g,''); }
+
+  function normalizeRow(raw, idx){
+    const get = k => (raw[k] || '').trim();
+    return {
+      _id: idx,
+      first: get('first name'),
+      last: get('last name'),
+      address: get('address'),
+      city: get('city'),
+      county: get('county'),
+      state: get('state'),
+      zip: get('zip'),
+      phone: get('phone'),
+      carrier: get('carrier'),
+      gender: get('gender'),
+      ethnicity: get('ethnicity'),
+      ownrent: get('ownrent'),
+      lat: get('latitude'),
+      lon: get('longitude'),
+    };
+  }
+
+  function buildIndex(){
+    SEARCH_INDEX = ROWS.map(r => (
+      SEARCH_FIELDS.map(f => {
+        const key = {'first name':'first','last name':'last','address':'address','city':'city','county':'county','state':'state','zip':'zip','phone':'phone','carrier':'carrier'}[f];
+        return r[key];
+      }).join(' ') + ' ' + digitsOnly(r.phone)
+    ).toLowerCase());
+  }
+
+  function loadData(){
+    const CHUNKS = ['Main-1.json','Main-2.json','Main-3.json','Main-4.json','Main-5.json'];
+    Promise.all(CHUNKS.map(name =>
+      fetch(name).then(res => {
+        if(!res.ok) throw new Error(name + ' — HTTP ' + res.status);
+        return res.json();
+      })
+    ))
+      .then(parts => {
+        const data = [].concat(...parts);
+        ROWS = data.map(normalizeRow);
+        buildIndex();
+        onDataReady();
+      })
+      .catch(err => {
+        $('#emptyTitle').textContent = 'Couldn\u2019t load data files';
+        $('#emptyBody').innerHTML = 'Make sure <code>Main-1.json</code> through <code>Main-5.json</code>, <code>Logo.svg</code>, and <code>Logo.png</code> all sit next to <code>index.html</code>, and that the folder is served over HTTP — opening the file directly (<code>file://</code>) blocks the fetch. Try: <code>python -m http.server</code>, then open <code>localhost:8000</code>.<br><br><span style="color:var(--needle-dim)">' + err.message + '</span>';
+      });
+  }
+
+  function onDataReady(){
+    $('#statCount').textContent = ROWS.length.toLocaleString();
+    $('#statStates').textContent = new Set(ROWS.map(r => r.state).filter(Boolean)).size;
+    input.disabled = false;
+    input.placeholder = 'Search ' + ROWS.length.toLocaleString() + ' records by name, address, city, county, state, zip, or phone…';
+    $('#emptyTitle').textContent = 'Start typing to search';
+    $('#emptyBody').textContent = 'Results appear as you type. Click any record to open its detail and branch out to related records.';
+  }
+
+  loadData();
+
+  // ---------------------------------------------------------------
+  // Search
+  // ---------------------------------------------------------------
+  const MAX_RESULTS = 150;
+  let debounceTimer = null;
+
+  input.addEventListener('input', () => {
+    clearBtn.style.display = input.value ? 'block' : 'none';
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(runSearch, 120);
+  });
+  clearBtn.addEventListener('click', () => { input.value=''; clearBtn.style.display='none'; runSearch(); input.focus(); });
+
+  function runSearch(){
+    const q = input.value.trim().toLowerCase();
+    if(!q){
+      resultsEl.innerHTML = '';
+      resultsEl.appendChild(emptyState);
+      resultCountEl.textContent = '';
+      return;
+    }
+    const terms = q.split(/\s+/).filter(Boolean);
+    const matches = [];
+    for(let i=0; i<ROWS.length; i++){
+      const hay = SEARCH_INDEX[i];
+      let ok = true;
+      for(const t of terms){ if(!hay.includes(t)){ ok=false; break; } }
+      if(ok){ matches.push(ROWS[i]); if(matches.length >= 5000) break; }
+    }
+    renderResults(matches, q);
+  }
+
+  function renderResults(matches, q){
+    if(matches.length === 0){
+      resultsEl.innerHTML = '';
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = '<div class="glyph">∅</div><h2>No matches</h2><p>Nothing in the index matches "' + escapeHtml(q) + '".</p>';
+      resultsEl.appendChild(div);
+      resultCountEl.textContent = '0 results';
+      return;
+    }
+    resultCountEl.textContent = matches.length.toLocaleString() + (matches.length >= 5000 ? '+ results (narrow your search)' : ' result' + (matches.length===1?'':'s'));
+    const shown = matches.slice(0, MAX_RESULTS);
+    let html = '<table class="results-table"><thead><tr><th>Name</th><th>Location</th><th>Phone</th><th></th></tr></thead><tbody>';
+    for(const r of shown){
+      html += '<tr data-id="' + r._id + '">' +
+        '<td class="name">' + escapeHtml(fullName(r)) + '</td>' +
+        '<td class="loc">' + escapeHtml([r.city, r.state].filter(Boolean).join(', ')) + '</td>' +
+        '<td>' + escapeHtml(formatPhone(r.phone)) + '</td>' +
+        '<td class="go">→</td>' +
+        '</tr>';
+    }
+    html += '</tbody></table>';
+    if(matches.length > MAX_RESULTS){
+      html += '<div class="truncnote">Showing first ' + MAX_RESULTS + ' of ' + matches.length.toLocaleString() + ' matches — refine your search to narrow it down.</div>';
+    }
+    resultsEl.innerHTML = html;
+    resultsEl.querySelectorAll('tbody tr').forEach(tr => {
+      tr.addEventListener('click', () => openRecord(parseInt(tr.dataset.id), true));
+    });
+  }
+
+  function fullName(r){ return [r.first, r.last].filter(Boolean).join(' ') || '(no name on file)'; }
+  function formatPhone(p){
+    const d = digitsOnly(p);
+    if(d.length === 10) return '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+    return p || '—';
+  }
+  function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // ---------------------------------------------------------------
+  // Detail panel + branching
+  // ---------------------------------------------------------------
+  const panel = $('#panel');
+  const scrim = $('#scrim');
+  const panelBody = $('#panelBody');
+  const trailEl = $('#trail');
+
+  function openRecord(id, resetTrail){
+    const r = ROWS.find(x => x._id === id);
+    if(!r) return;
+    if(resetTrail){ historyStack.length = 0; }
+    historyStack.push(r);
+    renderTrail();
+    renderPanel(r);
+    panel.classList.add('open');
+    scrim.classList.add('open');
+  }
+
+  function renderTrail(){
+    trailEl.innerHTML = '';
+    historyStack.forEach((r, i) => {
+      if(i > 0){
+        const sep = document.createElement('span');
+        sep.className = 'sep'; sep.textContent = '›';
+        trailEl.appendChild(sep);
+      }
+      const b = document.createElement('button');
+      b.textContent = fullName(r);
+      b.addEventListener('click', () => {
+        historyStack.length = i + 1;
+        renderTrail();
+        renderPanel(r);
+      });
+      trailEl.appendChild(b);
+    });
+  }
+
+  function findRelated(r){
+    const sameAddress = [], samePhone = [], sameLastCity = [];
+    const rAddr = (r.address + '|' + r.city + '|' + r.state).toLowerCase();
+    const rPhone = digitsOnly(r.phone);
+    const rLastCity = (r.last + '|' + r.city).toLowerCase();
+    for(const o of ROWS){
+      if(o._id === r._id) continue;
+      const oAddr = (o.address + '|' + o.city + '|' + o.state).toLowerCase();
+      if(r.address && oAddr === rAddr){ sameAddress.push(o); continue; }
+      if(rPhone && digitsOnly(o.phone) === rPhone){ samePhone.push(o); continue; }
+      const oLastCity = (o.last + '|' + o.city).toLowerCase();
+      if(r.last && r.city && oLastCity === rLastCity){ sameLastCity.push(o); }
+    }
+    return { sameAddress, samePhone, sameLastCity };
+  }
+
+  function branchListHtml(items, tag, limit){
+    if(items.length === 0) return '<div class="branch-empty">None found.</div>';
+    const shown = items.slice(0, limit || 12);
+    let html = '<ul class="branch-list">';
+    for(const o of shown){
+      html += '<li data-id="' + o._id + '"><span>' + escapeHtml(fullName(o)) + '</span><span class="tag">' + tag + '</span></li>';
+    }
+    html += '</ul>';
+    if(items.length > shown.length) html += '<div class="branch-empty">+' + (items.length - shown.length) + ' more not shown</div>';
+    return html;
+  }
+
+  function field(k, v, full){
+    return '<div class="field' + (full?' full':'') + '"><div class="k">' + k + '</div><div class="v' + (v?'':' empty') + '">' + (v ? escapeHtml(v) : 'not on file') + '</div></div>';
+  }
+
+  function renderPanel(r){
+    const rel = findRelated(r);
+    let html = '';
+    html += '<div class="rec-name">' + escapeHtml(fullName(r)) + '</div>';
+    html += '<div class="rec-sub">' + escapeHtml([r.city, r.county && (r.county + ' County'), r.state].filter(Boolean).join(' · ')) + '</div>';
+
+    html += '<div class="field-grid">';
+    html += field('Address', [r.address].filter(Boolean).join(''), true);
+    html += field('City', r.city);
+    html += field('State', r.state);
+    html += field('County', r.county);
+    html += field('ZIP', r.zip);
+    html += field('Phone', formatPhone(r.phone));
+    html += field('Carrier', r.carrier);
+    html += field('Own / Rent', r.ownrent);
+    html += field('Gender', r.gender);
+    html += field('Ethnicity (est.)', r.ethnicity);
+    html += field('Coordinates', (r.lat && r.lon) ? (r.lat + ', ' + r.lon) : '');
+    html += '</div>';
+
+    html += '<div class="branch-section"><h3>At the same address</h3>' + branchListHtml(rel.sameAddress, 'household') + '</div>';
+    html += '<div class="branch-section"><h3>Sharing this phone number</h3>' + branchListHtml(rel.samePhone, 'phone match') + '</div>';
+    html += '<div class="branch-section"><h3>Same last name, same city</h3>' + branchListHtml(rel.sameLastCity, 'possible relative') + '</div>';
+
+    panelBody.innerHTML = html;
+    panelBody.querySelectorAll('.branch-list li').forEach(li => {
+      li.addEventListener('click', () => openRecord(parseInt(li.dataset.id), false));
+    });
+  }
+
+  function closePanel(){
+    panel.classList.remove('open');
+    scrim.classList.remove('open');
+  }
+  $('#closeBtn').addEventListener('click', closePanel);
+  scrim.addEventListener('click', closePanel);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') closePanel(); });
+</script>
+</body>
+</html>
