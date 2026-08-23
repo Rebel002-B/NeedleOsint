@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Needle — Record Search</title>
 <link rel="icon" href="Logo.png">
-<script src="auth.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -85,10 +84,6 @@
   }
 
   .statbar{ display:flex; gap: 22px; }
-  .account-actions{ display:flex; align-items:center; gap:10px; margin-left:8px; }
-  .account-email{ max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; color:var(--ink-faint); }
-  .signout-btn{ background:transparent; border:1px solid var(--line); color:var(--ink-dim); font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; padding:8px 10px; cursor:pointer; }
-  .signout-btn:hover{ color:var(--needle); border-color:var(--needle-dim); }
   .stat{ text-align:right; }
   .stat .n{
     font-family: var(--display);
@@ -316,7 +311,7 @@
 
   <header>
     <div class="brand">
-      <img class="logo" src="Logo.png" alt="Needle">
+      <img class="logo" src="Logo.svg" alt="Needle" onerror="this.onerror=null;this.src='Logo.png';this.classList.add('fallback-tried')">
       <div>
         <h1>Needle<span>.</span></h1>
         <div class="tagline">Find it in the haystack</div>
@@ -334,10 +329,6 @@
       <div class="stat">
         <div class="n" id="statStates">—</div>
         <div class="l">States Covered</div>
-      </div>
-      <div class="account-actions">
-        <span class="account-email" id="accountEmail"></span>
-        <button type="button" class="signout-btn" id="signOutBtn">Sign out</button>
       </div>
     </div>
   </header>
@@ -390,9 +381,6 @@
   const emptyState = $('#emptyState');
   const resultCountEl = $('#resultCount');
   const clearBtn = $('#clearBtn');
-  $('#signOutBtn').addEventListener('click', () => {
-    NeedleAuth.logout().finally(() => window.location.replace('login.html'));
-  });
 
   function digitsOnly(s){ return (s||'').replace(/\D/g,''); }
 
@@ -455,11 +443,7 @@
     $('#emptyBody').textContent = 'Results appear as you type. Click any record to open its detail and branch out to related records.';
   }
 
-  NeedleAuth.requireUser().then(user => {
-    if (!user) return;
-    $('#accountEmail').textContent = user.email;
-    loadData();
-  }).catch(() => window.location.replace('login.html'));
+  loadData();
 
   // ---------------------------------------------------------------
   // Search
