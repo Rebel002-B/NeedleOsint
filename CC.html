@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>LuhnBot Pro</title>
+</head>
+<body>
+
+<table width="100%" cellpadding="10" cellspacing="0" bgcolor="#EEEEEE">
+<tr>
+<td align="center">
+
+<table width="700" cellpadding="15" cellspacing="0" bgcolor="#FFFFFF" border="1">
+
+<tr>
+<td bgcolor="#3333FF" align="center" colspan="2">
+<font color="#FFFFFF" size="6" face="Arial"><b>LuhnBot Pro</b></font><br>
+<font color="#CCCCFF" size="3" face="Arial">v1.0</font>
+</td>
+</tr>
+
+<tr>
+<td colspan="2" bgcolor="#FFFFCC" align="center">
+<font size="4" face="Arial"><b>FORMAT: 5608403526370647 | 01 | 2031 | 407</b></font>
+</td>
+</tr>
+
+<tr>
+<td colspan="2" bgcolor="#DDDDDD" align="center">
+<br>
+<font size="4" face="Arial"><b>Upload TXT File</b></font><br>
+<input type="file" id="fileInput" accept=".txt"><br>
+<font size="2" color="#666666">one card per line</font>
+<br><br>
+</td>
+</tr>
+
+<tr>
+<td colspan="2">
+
+<form name="cardForm" onsubmit="return false;">
+
+<table width="100%" cellpadding="8" cellspacing="0">
+
+<tr>
+<td><font size="4" face="Arial"><b>Card Number:</b></font></td>
+<td><input type="text" id="cardNumber" value="5608403526370647" size="35"></td>
+</tr>
+
+<tr>
+<td><font size="4" face="Arial"><b>Exp Month:</b></font></td>
+<td><input type="text" id="expMonth" value="01" size="5"></td>
+</tr>
+
+<tr>
+<td><font size="4" face="Arial"><b>Exp Year:</b></font></td>
+<td><input type="text" id="expYear" value="2031" size="8"></td>
+</tr>
+
+<tr>
+<td><font size="4" face="Arial"><b>CVV:</b></font></td>
+<td><input type="text" id="cvv" value="407" size="6"></td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<br>
+<input type="button" value="  CHECK CARD  " onclick="checkCard()" style="font-size:18px; padding:8px 30px; background-color:#33CC33; border:2px solid #000000; font-weight:bold;">
+<input type="button" value="  RESET  " onclick="resetForm()" style="font-size:18px; padding:8px 30px; background-color:#CCCCCC; border:2px solid #000000; font-weight:bold;">
+<input type="button" value="  CLEAR BULK  " onclick="clearBulk()" style="font-size:18px; padding:8px 20px; background-color:#FF6666; border:2px solid #000000; font-weight:bold;">
+<br><br>
+</td>
+</tr>
+
+</table>
+
+</form>
+
+</td>
+</tr>
+
+<tr>
+<td colspan="2" bgcolor="#F0F0F0" id="resultArea" style="padding:15px; border:2px solid #000000; min-height:60px;">
+<font size="4" id="resultText"><b>Waiting for card...</b></font><br>
+<font size="3" color="#666666" id="resultDetail">enter card details or upload txt file</font>
+</td>
+</tr>
+
+<tr>
+<td colspan="2" id="bulkArea" style="padding:15px;">
+
+<div id="bulkStats" style="display:none; background-color:#EEEEEE; padding:10px; border:2px solid #000000; margin-bottom:10px;">
+<font size="4"><b>STATS:</b></font>
+<font size="4"><b>Total:</b> <span id="totalCount">0</span></font>
+<font size="4" style="margin-left:20px;"><b>Valid:</b> <span id="validCount" style="color:#00AA00;">0</span></font>
+<font size="4" style="margin-left:20px;"><b>Invalid:</b> <span id="invalidCount" style="color:#FF0000;">0</span></font>
+</div>
+
+<div id="bulkTable" style="display:none; border:2px solid #000000; max-height:250px; overflow:auto;">
+<table width="100%" cellpadding="5" cellspacing="0" bgcolor="#FFFFFF">
+<tr bgcolor="#DDDDDD">
+<th width="30">#</th>
+<th align="left">Card</th>
+<th align="left">Exp</th>
+<th align="left">CVV</th>
+<th align="left">Status</th>
+</tr>
+<tbody id="bulkBody"></tbody>
+</table>
+</div>
+
+</td>
+</tr>
+
+<tr>
+<td colspan="2" bgcolor="#DDDDDD" align="center">
+<font size="2" color="#666666">LuhnBot Pro v1.0</font>
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+<script>
+
+var bulkData = [];
+
+function getDigits(str) {
+    return str.replace(/\D/g, '');
+}
+
+function luhnCheck(num) {
+    var sum = 0;
+    var flip = false;
+    for (var i = num.length - 1; i >= 0; i--) {
+        var digit = parseInt(num[i], 10);
+        if (isNaN(digit)) return false;
+        if (flip) {
+            digit = digit * 2;
+            if (digit > 9) digit = digit - 9;
+        }
+        sum = sum + digit;
+        flip = !flip;
+    }
+    return sum % 10 === 0;
+}
+
+function validateCard(raw) {
+    var parts = raw.split('|');
+    for (var i = 0; i < parts.length; i++) {
+        parts[i] = parts[i].trim();
+    }
+    
+    if (parts.length != 4) {
+        return { valid: false, reason: 'need 4 parts' };
+    }
+
+    var card = parts[0];
+    var month = parts[1];
+    var year = parts[2];
+    var cvv = parts[3];
+
+    var cardDigits = getDigits(card);
+    if (cardDigits.length != 16) {
+        return { valid: false, reason: 'card 16 digits' };
+    }
+    if (!/^\d{16}$/.test(cardDigits)) {
+        return { valid: false, reason: 'card has letters' };
+    }
+    if (!luhnCheck(cardDigits)) {
+        return { valid: false, reason: 'luhn failed' };
+    }
+
+    var monthDigits = getDigits(month);
+    if (monthDigits.length != 2) {
+        return { valid: false, reason: 'month 2 digits' };
+    }
+    var m = parseInt(monthDigits, 10);
+    if (isNaN(m) || m < 1 || m > 12) {
+        return { valid: false, reason: 'month 01-12' };
+    }
+
+    var yearDigits = getDigits(year);
+    if (yearDigits.length != 4) {
+        return { valid: false, reason: 'year 4 digits' };
+    }
+    var y = parseInt(yearDigits, 10);
+    if (isNaN(y) || y < 2025 || y > 2099) {
+        return { valid: false, reason: 'year 2025-2099' };
+    }
+
+    var now = new Date();
+    var currentYear = now.getFullYear();
+    var currentMonth = now.getMonth() + 1;
+    if (y < currentYear || (y == currentYear && m < currentMonth)) {
+        return { valid: false, reason: 'card expired' };
+    }
+
+    var cvvDigits = getDigits(cvv);
+    if (cvvDigits.length < 3 || cvvDigits.length > 4) {
+        return { valid: false, reason: 'cvv 3-4 digits' };
+    }
+    if (!/^\d{3,4}$/.test(cvvDigits)) {
+        return { valid: false, reason: 'cvv has letters' };
+    }
+
+    return {
+        valid: true,
+        reason: 'valid',
+        card: cardDigits,
+        month: monthDigits,
+        year: yearDigits,
+        cvv: cvvDigits,
+    };
+}
+
+function checkCard() {
+    var cardNum = document.getElementById('cardNumber').value;
+    var month = document.getElementById('expMonth').value;
+    var year = document.getElementById('expYear').value;
+    var cvv = document.getElementById('cvv').value;
+    
+    var raw = cardNum + '|' + month + '|' + year + '|' + cvv;
+    var result = validateCard(raw);
+    
+    if (result.valid) {
+        document.getElementById('resultText').innerHTML = '<font color="#00AA00"><b>VALID</b></font>';
+        document.getElementById('resultDetail').innerHTML = 'Card: ' + result.card + ' | Exp: ' + result.month + '/' + result.year + ' | CVV: ' + result.cvv;
+        document.getElementById('resultArea').style.backgroundColor = '#DDFFDD';
+        document.getElementById('resultArea').style.borderColor = '#00AA00';
+    } else {
+        document.getElementById('resultText').innerHTML = '<font color="#FF0000"><b>INVALID - ' + result.reason + '</b></font>';
+        document.getElementById('resultDetail').innerHTML = 'please check the format';
+        document.getElementById('resultArea').style.backgroundColor = '#FFDDDD';
+        document.getElementById('resultArea').style.borderColor = '#FF0000';
+    }
+}
+
+function resetForm() {
+    document.getElementById('cardNumber').value = '5608403526370647';
+    document.getElementById('expMonth').value = '01';
+    document.getElementById('expYear').value = '2031';
+    document.getElementById('cvv').value = '407';
+    document.getElementById('resultText').innerHTML = '<b>Waiting for card...</b>';
+    document.getElementById('resultDetail').innerHTML = 'enter card details or upload txt file';
+    document.getElementById('resultArea').style.backgroundColor = '#F0F0F0';
+    document.getElementById('resultArea').style.borderColor = '#000000';
+}
+
+function renderBulk(results) {
+    if (!results || results.length == 0) {
+        document.getElementById('bulkStats').style.display = 'none';
+        document.getElementById('bulkTable').style.display = 'none';
+        return;
+    }
+
+    document.getElementById('bulkStats').style.display = 'block';
+    document.getElementById('bulkTable').style.display = 'block';
+    
+    var html = '';
+    var valid = 0;
+    var invalid = 0;
+    
+    for (var i = 0; i < results.length; i++) {
+        var item = results[i];
+        var statusText = item.valid ? '<font color="#00AA00"><b>VALID</b></font>' : '<font color="#FF0000"><b>INVALID</b></font>';
+        if (item.valid) valid++;
+        else invalid++;
+        
+        html = html + '<tr>';
+        html = html + '<td>' + (i + 1) + '</td>';
+        html = html + '<td>' + (item.card || '---') + '</td>';
+        html = html + '<td>' + (item.month || '--') + '/' + (item.year || '----') + '</td>';
+        html = html + '<td>' + (item.cvv || '---') + '</td>';
+        html = html + '<td>' + statusText + '</td>';
+        html = html + '</tr>';
+    }
+    
+    document.getElementById('bulkBody').innerHTML = html;
+    document.getElementById('totalCount').innerHTML = results.length;
+    document.getElementById('validCount').innerHTML = valid;
+    document.getElementById('invalidCount').innerHTML = invalid;
+}
+
+function parseFile(text) {
+    var lines = text.split('\n');
+    var results = [];
+    
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (line != '') {
+            var result = validateCard(line);
+            results.push({
+                valid: result.valid,
+                reason: result.reason || 'invalid',
+                card: result.card || null,
+                month: result.month || null,
+                year: result.year || null,
+                cvv: result.cvv || null,
+            });
+        }
+    }
+    
+    return results;
+}
+
+function handleFile(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var text = e.target.result;
+        var results = parseFile(text);
+        bulkData = results;
+        renderBulk(results);
+        
+        var total = results.length;
+        var valid = 0;
+        for (var i = 0; i < results.length; i++) {
+            if (results[i].valid) valid++;
+        }
+        var invalid = total - valid;
+        
+        document.getElementById('resultText').innerHTML = '<b>Imported ' + total + ' cards</b>';
+        document.getElementById('resultDetail').innerHTML = valid + ' valid, ' + invalid + ' invalid';
+        document.getElementById('resultArea').style.backgroundColor = '#DDDDFF';
+        document.getElementById('resultArea').style.borderColor = '#3333FF';
+    };
+    reader.onerror = function() {
+        document.getElementById('resultText').innerHTML = '<font color="#FF0000"><b>Error reading file</b></font>';
+        document.getElementById('resultDetail').innerHTML = 'try again';
+        document.getElementById('resultArea').style.backgroundColor = '#FFDDDD';
+        document.getElementById('resultArea').style.borderColor = '#FF0000';
+    };
+    reader.readAsText(file);
+}
+
+function clearBulk() {
+    bulkData = [];
+    renderBulk([]);
+    resetForm();
+    document.getElementById('resultText').innerHTML = '<b>Bulk cleared</b>';
+    document.getElementById('resultDetail').innerHTML = 'ready for new import';
+    document.getElementById('resultArea').style.backgroundColor = '#F0F0F0';
+    document.getElementById('resultArea').style.borderColor = '#000000';
+}
+
+document.getElementById('fileInput').addEventListener('change', function() {
+    if (this.files.length > 0) {
+        handleFile(this.files[0]);
+    }
+    this.value = '';
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key == 'Enter') {
+        checkCard();
+    }
+});
+
+window.addEventListener('load', function() {
+    resetForm();
+    renderBulk([]);
+});
+
+</script>
+
+</body>
+</html>
