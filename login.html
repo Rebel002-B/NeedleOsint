@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Needle OSINT — Access</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08090d;
+  --surface:#0d1117;
+  --border:#1c2128;
+  --border-focus:#2d6ced;
+  --text:#e6edf3;
+  --text-muted:#8b949e;
+  --text-dim:#484f58;
+  --accent:#1f6feb;
+  --accent-glow:rgba(31,111,235,.18);
+  --red:#f85149;
+  --green:#3fb950;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Fraunces',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{
+  height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--mono);
+  -webkit-font-smoothing:antialiased;
+}
+body{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 60% 50% at 50% 0%,rgba(31,111,235,.06),transparent),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.009) 0,rgba(255,255,255,.009) 1px,transparent 1px,transparent 3px);
+}
+.wrap{width:100%;max-width:420px;padding:24px;opacity:0;transform:translateY(12px);animation:rise .5s ease forwards;}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:36px;}
+.brand img{width:38px;height:38px;object-fit:contain;}
+.brand-text h1{font-family:var(--display);font-size:26px;font-weight:900;letter-spacing:-.02em;line-height:1;}
+.brand-text h1 span{color:var(--accent)}
+.brand-text p{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-top:5px;}
+.card{background:var(--surface);border:1px solid var(--border);padding:28px;}
+.card-title{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:22px;display:flex;align-items:center;gap:8px;}
+.card-title::before{content:'';display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 2s ease-in-out infinite;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;}
+.input-wrap{position:relative;}
+.input-wrap input{width:100%;background:#111318;border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:14px;padding:11px 42px 11px 14px;outline:none;transition:border-color .15s ease,box-shadow .15s ease;letter-spacing:.04em;}
+.input-wrap input:focus{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow);}
+.input-wrap input::placeholder{color:var(--text-dim)}
+.toggle-vis{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-dim);padding:0;display:flex;align-items:center;transition:color .15s;}
+.toggle-vis:hover{color:var(--text-muted)}
+.toggle-vis svg{width:16px;height:16px}
+.error-msg{display:none;background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.25);color:var(--red);font-size:11px;padding:9px 12px;margin-bottom:16px;letter-spacing:.02em;}
+.error-msg.show{display:block}
+.submit-btn{width:100%;background:var(--accent);border:none;color:#fff;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:13px;cursor:pointer;transition:background .15s ease,opacity .15s;position:relative;overflow:hidden;}
+.submit-btn:hover{background:#388bfd}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed}
+.submit-btn .spinner{display:none;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;position:absolute;right:16px;top:50%;transform:translateY(-50%);}
+.submit-btn.loading .spinner{display:block}
+.footer{margin-top:24px;text-align:center;font-size:10px;color:var(--text-dim);letter-spacing:.04em;}
+.rate-info{margin-top:12px;font-size:9.5px;color:var(--text-dim);text-align:center;letter-spacing:.03em;}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:translateY(-50%) rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <img src="Logo.png" alt="Needle" onerror="this.style.display='none'">
+    <div class="brand-text"><h1>Needle<span>.</span></h1><p>OSINT Analytics Platform</p></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Secure Access Required</div>
+    <form id="loginForm" autocomplete="off">
+      <div class="field">
+        <label for="password">Access Key</label>
+        <div class="input-wrap">
+          <input type="password" id="password" name="password" placeholder="Enter access key" autocomplete="current-password" autofocus>
+          <button type="button" class="toggle-vis" id="toggleVis" tabindex="-1" aria-label="Toggle visibility">
+            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
+        </div>
+      </div>
+      <div class="error-msg" id="errorMsg"></div>
+      <button type="submit" class="submit-btn" id="submitBtn">Authenticate<span class="spinner"></span></button>
+    </form>
+    <div class="rate-info">5 attempts max · 15-minute lockout on failure</div>
+  </div>
+  <div class="footer">Needle OSINT &middot; Restricted Access</div>
+</div>
+<script>
+(function(){
+  const form=document.getElementById('loginForm');
+  const pwInput=document.getElementById('password');
+  const btn=document.getElementById('submitBtn');
+  const errMsg=document.getElementById('errorMsg');
+  const toggleVis=document.getElementById('toggleVis');
+  const eyeIcon=document.getElementById('eyeIcon');
+  toggleVis.addEventListener('click',()=>{
+    const isPass=pwInput.type==='password';
+    pwInput.type=isPass?'text':'password';
+    eyeIcon.innerHTML=isPass
+      ?'<line x1="1" y1="1" x2="23" y2="23"/><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>'
+      :'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  });
+  function showError(msg){errMsg.textContent=msg;errMsg.classList.add('show');}
+  function hideError(){errMsg.classList.remove('show');}
+  form.addEventListener('submit',async(e)=>{
+    e.preventDefault();
+    const pw=pwInput.value;
+    if(!pw){showError('Access key required');return;}
+    hideError();
+    btn.disabled=true;
+    btn.classList.add('loading');
+    btn.childNodes[0].nodeValue='Verifying ';
+    try{
+      const resp=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+      const data=await resp.json();
+      if(resp.ok){
+        btn.childNodes[0].nodeValue='Access Granted ';
+        btn.style.background='#2ea44f';
+        setTimeout(()=>{window.location.href='/dashboard';},400);
+        return;
+      }
+      if(resp.status===429){showError(data.error||'Too many attempts. Try again in 15 minutes.');}
+      else{showError('Invalid access key.');pwInput.value='';pwInput.focus();}
+    }catch(_){showError('Connection error. Try again.');}
+    finally{
+      if(btn.childNodes[0].nodeValue.startsWith('Verifying')){btn.childNodes[0].nodeValue='Authenticate ';}
+      btn.disabled=false;
+      btn.classList.remove('loading');
+    }
+  });
+})();
+</script>
+</body>
+</html>
